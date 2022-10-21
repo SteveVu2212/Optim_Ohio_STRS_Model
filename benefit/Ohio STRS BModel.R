@@ -56,8 +56,7 @@ IsRetirementEligible <- function(Age, YOS, HireType){
 RetirementType <- function(Age, YOS, HireType){
   
   Check = ifelse(IsRetirementEligible_Regular(Age, YOS, HireType), 'Regular',
-                 ifelse(IsRetirementEligible_Early(Age, YOS, HireType), 'Early',
-                        ifelse(YOS >= 3, 'Withdrawal','None')))
+                 ifelse(IsRetirementEligible_Early(Age, YOS, HireType), 'Early','None'))
   
   return(Check)
 }
@@ -190,16 +189,17 @@ SeparationRates <- SeparationRates %>%
          
          SepRateMale_Current = ifelse(retirement_type == "Regular" & HireType == 'Current', MaleCurrentHire_More35YOS,
                                       ifelse(retirement_type == "Early" & HireType == 'Current', MaleCurrentHire_Less25YOS + MaleCurrentHire_2529YOS + MaleCurrentHire_3034YOS,
-                                             ifelse(retirement_type == 'Withdrawal', NonTermVest_Male + TermVest_Male,0))),
+                                             ifelse(YOS <= 5, NonTermVest_Male,TermVest_Male))),
          SepRateFemale_Current = ifelse(retirement_type == "Regular" & HireType == 'Current', FemaleCurrentHire_More35YOS,
                                         ifelse(retirement_type == "Early" & HireType == 'Current', FemaleCurrentHire_Less25YOS + FemaleCurrentHire_2529YOS + FemaleCurrentHire_3034YOS,
-                                               ifelse(retirement_type == 'Withdrawal', NonTermVest_Female + TermVest_Female,0))),
+                                               ifelse(YOS <= 5, NonTermVest_Female,TermVest_Female))),
+         
          SepRateMale_New = ifelse(retirement_type == "Regular" & HireType == 'New', MaleNewHire_More35YOS,
                                   ifelse(retirement_type == "Early" & HireType == 'New', MaleNewHire_Less25YOS + MaleNewHire_2529YOS + MaleNewHire_3034YOS,
-                                         ifelse(retirement_type == 'Withdrawal', NonTermVest_Male + TermVest_Male,0))),
+                                         ifelse(YOS <= 5, NonTermVest_Male,TermVest_Male))),
          SepRateFemale_New = ifelse(retirement_type == "Regular" & HireType == 'New', FemaleNewHire_More35YOS,
                                     ifelse(retirement_type == "Early" & HireType == 'New', FemaleNewHire_Less25YOS + FemaleNewHire_2529YOS + FemaleNewHire_3034YOS,
-                                           ifelse(retirement_type == 'Withdrawal', NonTermVest_Female + TermVest_Female,0))),
+                                           ifelse(YOS <= 5, NonTermVest_Female,TermVest_Female))),
          SepRate_Current = (SepRateMale_Current + SepRateFemale_Current)/2,
          SepRate_New = (SepRateMale_New + SepRateFemale_New)/2) %>% 
   group_by(entry_age) %>% 
