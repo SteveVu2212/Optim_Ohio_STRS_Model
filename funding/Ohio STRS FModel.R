@@ -186,7 +186,7 @@ for(i in StartIndex:length(FYE)){
   #
   #Benefit Payments, Admin Expenses, Refunds, Transfer
   BenPayments_Total[i] <- BenPayments_Total[i-1]*(1+BenGrowthMax)
-  BenPayments_NewHires[i] <- -1*NewHirePayroll[i]*BenefitPayments$NewHireBP_Pct[i]*6
+  BenPayments_NewHires[i] <- BenPayments_Total[i]*(1 - CurrentHirePct[i])
   BenPayments_CurrentHires[i] <- BenPayments_Total[i] - BenPayments_NewHires[i]
   AdminExp[i] <- -1*Admin_Exp_Pct*TotalPayroll[i]
   AdminExp_CurrentHires[i] <- -1*Admin_Exp_Pct*CurrentHirePayroll[i]
@@ -194,7 +194,7 @@ for(i in StartIndex:length(FYE)){
   #
   #Accrued Liability, MOY NC - Original DR
   MOYNCExistOrigDR[i] <- NC_DB_Pct_CurrentHire*DBPayroll_CurrentHires[i] + NC_Combined_Pct_CurrentHire*CombinedPlanPayroll_CurrentHires[i]
-  MOYNCNewHiresOrigDR[i] <- NC_DB_Pct_CurrentHire*DBPayroll_CurrentHires[i] + NC_Combined_Pct_CurrentHire*CombinedPlanPayroll_CurrentHires[i]
+  MOYNCNewHiresOrigDR[i] <- NC_DB_Pct_NewHire*DBPayroll_NewHires[i] + NC_Combined_Pct_NewHire*CombinedPlanPayroll_NewHires[i]
   AccrLiabOrigDR_CurrentHires[i] <- AccrLiabOrigDR_CurrentHires[i-1]*(1+OriginalDR_CurrentHires[i]) + (MOYNCExistOrigDR[i] + BenPayments_CurrentHires[i])*(1+OriginalDR_CurrentHires[i])^0.5
   AccrLiabOrigDR_NewHires[i] <- AccrLiabOrigDR_NewHires[i-1]*(1+OriginalDR_CurrentHires[i]) + (MOYNCNewHiresOrigDR[i] + BenPayments_NewHires[i])*(1+OriginalDR_NewHires[i])^0.5
   AccrLiabOrigDR_Total[i] <- AccrLiabOrigDR_CurrentHires[i] + AccrLiabOrigDR_NewHires[i]
