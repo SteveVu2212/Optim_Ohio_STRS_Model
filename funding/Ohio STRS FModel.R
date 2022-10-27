@@ -198,6 +198,11 @@ for(i in StartIndex:length(FYE)){
   AccrLiabOrigDR_CurrentHires[i] <- AccrLiabOrigDR_CurrentHires[i-1]*(1+OriginalDR_CurrentHires[i]) + (MOYNCExistOrigDR[i] + BenPayments_CurrentHires[i])*(1+OriginalDR_CurrentHires[i])^0.5
   AccrLiabOrigDR_NewHires[i] <- AccrLiabOrigDR_NewHires[i-1]*(1+OriginalDR_CurrentHires[i]) + (MOYNCNewHiresOrigDR[i] + BenPayments_NewHires[i])*(1+OriginalDR_NewHires[i])^0.5
   AccrLiabOrigDR_Total[i] <- AccrLiabOrigDR_CurrentHires[i] + AccrLiabOrigDR_NewHires[i]
+  
+  #Brute force liability code
+  AccrLiabOrigDR_Total[i] <- AccrLiabOrigDR_Total[i-1]*1.024
+  AccrLiabOrigDR_CurrentHires[i] <- AccrLiabOrigDR_Total[i-1]*CurrentHirePct[i]
+  AccrLiabOrigDR_NewHires[i] <- AccrLiabOrigDR_Total[i-1]*(1 - CurrentHirePct[i])
   #
   #Accrued Liability, MOY NC - New DR
   DRDifference_CurrentHires <- 100*(OriginalDR_CurrentHires[i] - NewDR_CurrentHires[i])
@@ -301,30 +306,31 @@ for(i in StartIndex:length(FYE)){
   FR_AVA[i] <- AVA[i] / AccrLiabNewDR_Total[i]
   FR_MVA[i] <- MVA[i] / AccrLiabNewDR_Total[i]
   #
+  ##Amortization
   #Current Hires
   if(ProjectionCount < nrow(Amortization_CurrentHires)){
-    #Oustanding Balance
-    OutstandingBase_CurrentHires[ProjectionCount+1,2:(ProjectionCount + 1)] <- OutstandingBase_CurrentHires[ProjectionCount,1:ProjectionCount]*(1 + NewDR_CurrentHires[i-1]) - (Amortization_CurrentHires[ProjectionCount,1:ProjectionCount]*(1 + NewDR_CurrentHires[i-1])^0.5)
-    OutstandingBase_CurrentHires[ProjectionCount+1,1] <- UAL_AVA_CurrentHires[i] - sum(OutstandingBase_CurrentHires[ProjectionCount+1,1:ncol(OutstandingBase_CurrentHires)])
+    OutstandingBase_CurrentHires[ProjectionCount+1,2:ncol(OutstandingBase_CurrentHires)] <- OutstandingBase_CurrentHires[ProjectionCount,1:(ncol(OutstandingBase_CurrentHires)-1)]*(1 + NewDR_CurrentHires[i]) - (Amortization_CurrentHires[ProjectionCount,1:ncol(Amortization_CurrentHires)]*(1 + NewDR_CurrentHires[i])^0.5)
+    OutstandingBase_CurrentHires[ProjectionCount+1,1] <- UAL_AVA_CurrentHires[i] - sum(OutstandingBase_CurrentHires[ProjectionCount+1,2:ncol(OutstandingBase_CurrentHires)])
     
     #Amo Layers
-    #Start at "2:(ProjectionCount + 1)" because amortization period 1 is not done
-    Amortization_CurrentHires[ProjectionCount+1,1:(ProjectionCount + 1)] <- PMT(pv = OutstandingBase_CurrentHires[ProjectionCount+1,1:(ProjectionCount + 1)],
-                                                                                r = NewDR_CurrentHires[i], g = AmoBaseInc_CurrentHire, t = 0.5,
-                                                                                nper = pmax(OffsetYears_CurrentHires[ProjectionCount+1,1:(ProjectionCount + 1)],1))
+    Amortization_CurrentHires[ProjectionCount+1,1:ncol(Amortization_CurrentHires)] <- PMT(pv = OutstandingBase_CurrentHires[ProjectionCount+1,1:(ncol(OutstandingBase_CurrentHires)-1)], 
+                                                                                          r = NewDR_CurrentHires[i], 
+                                                                                          g = AmoBaseInc_CurrentHire, 
+                                                                                          t = 0.5,
+                                                                                          nper = pmax(OffsetYears_CurrentHires[ProjectionCount+1,1:ncol(OffsetYears_CurrentHires)],1))
   }
   
   #New Hires
   if(ProjectionCount < nrow(Amortization_NewHires)){
-    #Oustanding Balance
-    OutstandingBase_NewHires[ProjectionCount+1,2:(ProjectionCount + 1)] <- OutstandingBase_NewHires[ProjectionCount,1:ProjectionCount]*(1 + NewDR_NewHires[i-1]) - (Amortization_NewHires[ProjectionCount,1:ProjectionCount]*(1 + NewDR_NewHires[i-1])^0.5)
-    OutstandingBase_NewHires[ProjectionCount+1,1] <- UAL_AVA_NewHires[i] - sum(OutstandingBase_NewHires[ProjectionCount+1,1:ncol(OutstandingBase_NewHires)])
+    OutstandingBase_NewHires[ProjectionCount+1,2:ncol(OutstandingBase_NewHires)] <- OutstandingBase_NewHires[ProjectionCount,1:(ncol(OutstandingBase_NewHires)-1)]*(1 + NewDR_NewHires[i]) - (Amortization_NewHires[ProjectionCount,1:ncol(Amortization_NewHires)]*(1 + NewDR_NewHires[i])^0.5)
+    OutstandingBase_NewHires[ProjectionCount+1,1] <- UAL_AVA_NewHires[i] - sum(OutstandingBase_NewHires[ProjectionCount+1,2:ncol(OutstandingBase_NewHires)])
     
     #Amo Layers
-    #Start at "2:(ProjectionCount + 1)" because amortization period 1 is not done
-    Amortization_NewHires[ProjectionCount+1,1:(ProjectionCount + 1)] <- PMT(pv = OutstandingBase_NewHires[ProjectionCount+1,1:(ProjectionCount + 1)],
-                                                                            r = NewDR_NewHires[i], g = AmoBaseInc_NewHire, t = 0.5,
-                                                                            nper = pmax(OffsetYears_NewHires[ProjectionCount+1,1:(ProjectionCount + 1)],1))
+    Amortization_NewHires[ProjectionCount+1,1:ncol(Amortization_NewHires)] <- PMT(pv = OutstandingBase_NewHires[ProjectionCount+1,1:(ncol(OutstandingBase_NewHires)-1)], 
+                                                                                  r = NewDR_NewHires[i], 
+                                                                                  g = AmoBaseInc_NewHire, 
+                                                                                  t = 0.5,
+                                                                                  nper = pmax(OffsetYears_NewHires[ProjectionCount+1,1:ncol(OffsetYears_NewHires)],1))
   }
 }
 
