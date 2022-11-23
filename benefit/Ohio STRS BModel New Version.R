@@ -326,7 +326,7 @@ SalaryData <- SalaryData %>%
          FinalAvgSalary_3YR = rollmean(lag(Salary), k = 3, fill = NA, align = "right"),
          FinalAvgSalary_5YR = rollmean(lag(Salary), k = 5, fill = NA, align = "right"),
          #DB_EEContrib = (DB_EE_cont + DC_DB_EE_cont)*Salary,
-         DB_EEContrib = (DB_EE_cont)*Salary,
+         DB_EEContrib = DB_EE_cont*Salary,
          DBEEBalance = ifelse(YOS < 3, cumFV(0.02, DB_EEContrib),
                               ifelse(YOS >=3 & YOS < 5, cumFV(0.03, DB_EEContrib),
                                      cumFV(0.03, 1.5*DB_EEContrib))),
@@ -372,7 +372,7 @@ BenefitsTable <- AnnFactorData %>%
   # YOS is in the benefit section because of graded multipliers
   mutate(BaseBenefit1 = ifelse(YOS >= 35, Cumuative_Mult_2015*FinalAvgSalary_3YR, 0.022*FinalAvgSalary_3YR*YOS),
          BaseBenefit2 = 86*YOS,
-         RF = ifelse(RetYear < 2015, RF_Before2015, RF_After2015),
+         RF = ifelse(RetYear < 2015, RF_Before2015, RF_After2015/YOS),
          Benefit = ifelse(RetYear < 2015, pmax(BaseBenefit1,BaseBenefit2), 
                           BenMult_New*FinalAvgSalary_5YR*YOS),
          AnnFactorAdj = AnnuityFactor * surv_DR,
@@ -395,12 +395,13 @@ OptimumBenefit <- BenefitsTable %>%
 #### Actuarial PV of Pension Wealth = Pension Wealth 
 #Combine optimal benefit with employee balance and calculate the PV of future benefits and salaries 
 #####################################
+Balance_Benefit_Split <- 0.2
 FinalData <- SalaryData %>% 
   left_join(OptimumBenefit, by = c("EntryYear", "entry_age", "Age" = "term_age")) %>% 
   left_join(SeparationRates, by = c("EntryYear", "Age", "YOS", "entry_age", "Years" = "RetYear")) %>%
   mutate(SepType = SeparationType(Age,YOS, Years),
          PenWealth = ifelse(SepType == 'Retirement', pmax(DBEEBalance,MaxBenefit), 
-                            ifelse(SepType == 'Termination Vested', 0.5*(DBEEBalance + MaxBenefit), DBEEBalance)),
+                            ifelse(SepType == 'Termination Vested', Balance_Benefit_Split*DBEEBalance + (1-Balance_Benefit_Split)*MaxBenefit, DBEEBalance)),
          #PenWealth = pmax(DBEEBalance,MaxBenefit),  #50% lump sum, 50% optimal retirement
          #PenWealth = 0.5*(DBEEBalance + MaxBenefit),
          RealPenWealth = PenWealth/(1 + assum_infl)^YOS,
