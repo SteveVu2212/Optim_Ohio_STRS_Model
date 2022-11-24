@@ -94,7 +94,8 @@ HistoricalIndex <- StartProjectionYear - StartYear
 RowColCount <- (EndProjectionYear - StartProjectionYear + 1)
 
 ##Amo period tables
-currentlayer <- seq(NoYearsADC_CurrentHire, 1)
+#currentlayer <- seq(NoYearsADC_CurrentHire, 1)
+currentlayer <- seq(24, 1)
 futurelayer_currenthire <- seq(NoYearsADC_CurrentHire, 1)
 futurelayer_futurehire <- seq(NoYearsADC_NewHire, 1)
 n <- max(length(currentlayer), length(futurelayer_currenthire))
@@ -144,233 +145,273 @@ Amortization_NewHires <- matrix(0,RowColCount + 1, length(futurelayer_futurehire
 
 ##################################################################################################################################################################
 
-#Scenario Index for referencing later based on investment return data
-ScenarioIndex <- which(colnames(Scenario_Data) == as.character(ScenType))
-#intialize this value at 0 for Total ER Contributions
-Total_ER[StartIndex-1] <- 0
-
-#Use this ratio for the current hire DB/DC/Combined Plan split
-DBCurrentRatio <- DBPayroll_CurrentHires[HistoricalIndex] / TotalPayroll[HistoricalIndex]
-DCCurrentRatio <- DCPayroll_CurrentHires[HistoricalIndex] / TotalPayroll[HistoricalIndex]
-CombinedCurrentRatio <- CombinedPlanPayroll_CurrentHires[HistoricalIndex] / TotalPayroll[HistoricalIndex]
-ARPCurrentRatio <- ARPPayroll_CurrentHires[HistoricalIndex] / TotalPayroll[HistoricalIndex]
-
-for(i in StartIndex:length(FYE)){
-  #Payroll
-  TotalPayroll[i] <- TotalPayroll[i-1]*(1 + Payroll_growth)
-  PayrollIncrease <- TotalPayroll[i-1]*(Payroll_growth)
-  CurrentHirePct[i] <- CurrentHirePct[i-1]*0.95
-  CurrentHirePayroll[i] <- TotalPayroll[i]*CurrentHirePct[i]
-  NewHirePayroll[i] <- TotalPayroll[i]*(1 - CurrentHirePct[i])
-  #
-  #Current Hire and New Hire split
-  DBPayroll_CurrentHires[i] <- CurrentHirePayroll[i]*DBCurrentRatio
-  DCPayroll_CurrentHires[i] <- CurrentHirePayroll[i]*DCCurrentRatio
-  CombinedPlanPayroll_CurrentHires[i] <- CurrentHirePayroll[i]*CombinedCurrentRatio
-  ARPPayroll_CurrentHires[i] <- CurrentHirePayroll[i]*ARPCurrentRatio
+RunModel <- function(DR_CurrentHires = dis_r_proj_currentHires,
+                     DR_NewHires = dis_r_proj_newHires,
+                     ReturnType = AnalysisType,
+                     DeSimType = ScenType,
+                     FundingPolicy = ER_Policy,
+                     CostSharing_AmoNew = CostSharing_Amo_NewHire,
+                     CostSharing_NCNew = CostSharing_NC_NewHire,
+                     CostSharing_AmoCurrent = CostSharing_Amo_CurrentHire,
+                     CostSharing_NCCurrent = CostSharing_NC_CurrentHire,
+                     #CurrentDebt_period = NoYearsADC_CurrentDebt,
+                     #NewDebtCurrentHire_period = NoYearsADC_NewDebtCurrentHire,
+                     #NewDebtNewHire_period = NoYearsADC_NewDebtNewHire,
+                     #AmoMethod_current = AmoMethod_CurrentHire,
+                     #AmoMethod_new = AmoMethod_NewHire,
+                     #OneTimeInfusion = CashInfusion,
+                     DC_choice = DC_Enrolled_Pct,
+                     Combined_choice = CombinedPlan_Enrolled_Pct){ 
   
-  DBPayroll_NewHires[i] <- NewHirePayroll[i]*(1 - (CombinedPlan_Enrolled_Pct + DC_Enrolled_Pct))
-  DCPayroll_NewHires[i] <- NewHirePayroll[i]*DC_Enrolled_Pct
-  CombinedPlanPayroll_NewHires[i] <- NewHirePayroll[i]*CombinedPlan_Enrolled_Pct
-  ARPPayroll_NewHires[i] <- NewHirePayroll[i] - (DBPayroll_NewHires[i] + CombinedPlanPayroll_NewHires[i] + DCPayroll_NewHires[i])
-  #
-  #
-  #Discount Rate
-  OriginalDR_CurrentHires[i] <- dis_r_currentHires
-  NewDR_CurrentHires[i] <- dis_r_proj_currentHires
-  OriginalDR_NewHires[i] <- dis_r_newHires
-  NewDR_NewHires[i] <- dis_r_proj_newHires
-  #
-  #Benefit Payments, Admin Expenses, Refunds, Transfer
-  BenPayments_Total[i] <- BenPayments_Total[i-1]*(1+BenGrowthMax)
-  BenPayments_NewHires[i] <- BenPayments_Total[i]*(1 - CurrentHirePct[i])
-  BenPayments_CurrentHires[i] <- BenPayments_Total[i] - BenPayments_NewHires[i]
-  AdminExp[i] <- -1*Admin_Exp_Pct*TotalPayroll[i]
-  AdminExp_CurrentHires[i] <- -1*Admin_Exp_Pct*CurrentHirePayroll[i]
-  AdminExp_NewHires[i] <- -1*Admin_Exp_Pct*NewHirePayroll[i]
-  #
-  #Accrued Liability, MOY NC - Original DR
-  MOYNCExistOrigDR[i] <- NC_DB_Pct_CurrentHire*DBPayroll_CurrentHires[i] + NC_Combined_Pct_CurrentHire*CombinedPlanPayroll_CurrentHires[i]
-  MOYNCNewHiresOrigDR[i] <- NC_DB_Pct_NewHire*DBPayroll_NewHires[i] + NC_Combined_Pct_NewHire*CombinedPlanPayroll_NewHires[i]
-  AccrLiabOrigDR_CurrentHires[i] <- AccrLiabOrigDR_CurrentHires[i-1]*(1+OriginalDR_CurrentHires[i]) + (MOYNCExistOrigDR[i] + BenPayments_CurrentHires[i])*(1+OriginalDR_CurrentHires[i])^0.5
-  AccrLiabOrigDR_NewHires[i] <- AccrLiabOrigDR_NewHires[i-1]*(1+OriginalDR_CurrentHires[i]) + (MOYNCNewHiresOrigDR[i] + BenPayments_NewHires[i])*(1+OriginalDR_NewHires[i])^0.5
-  AccrLiabOrigDR_Total[i] <- AccrLiabOrigDR_CurrentHires[i] + AccrLiabOrigDR_NewHires[i]
+  #Scenario Index for referencing later based on investment return data
+  ScenarioIndex <- which(colnames(Scenario_Data) == as.character(DeSimType))
+  #intialize this value at 0 for Total ER Contributions
+  Total_ER[StartIndex-1] <- 0
   
-  #Brute force liability code
-  AccrLiabOrigDR_Total[i] <- AccrLiabOrigDR_Total[i-1]*1.03
-  AccrLiabOrigDR_CurrentHires[i] <- AccrLiabOrigDR_Total[i-1]*CurrentHirePct[i]
-  AccrLiabOrigDR_NewHires[i] <- AccrLiabOrigDR_Total[i-1]*(1 - CurrentHirePct[i])
-  #
-  #Accrued Liability, MOY NC - New DR
-  DRDifference_CurrentHires <- 100*(OriginalDR_CurrentHires[i] - NewDR_CurrentHires[i])
-  DRDifference_NewHires <- 100*(OriginalDR_NewHires[i] - NewDR_NewHires[i])
-  MOYNCExistNewDR[i] <- MOYNCExistOrigDR[i]*((1+(NCSensDR/100))^(DRDifference_CurrentHires))
-  MOYNCNewHiresNewDR[i] <- MOYNCNewHiresOrigDR[i]*((1+(NCSensDR/100))^(DRDifference_NewHires))
-  AccrLiabNewDR_CurrentHires[i] <- AccrLiabOrigDR_CurrentHires[i]*((1+(LiabSensDR/100))^(DRDifference_CurrentHires))*((1+(Convexity/100))^((DRDifference_CurrentHires)^2/2))
-  AccrLiabNewDR_NewHires[i] <- AccrLiabOrigDR_NewHires[i]*((1+(LiabSensDR/100))^(DRDifference_NewHires))*((1+(Convexity/100))^((DRDifference_NewHires)^2/2))
-  AccrLiabNewDR_Total[i] <- AccrLiabNewDR_CurrentHires[i] + AccrLiabNewDR_NewHires[i]
+  #Use this ratio for the current hire DB/DC/Combined Plan split
+  DBCurrentRatio <- DBPayroll_CurrentHires[HistoricalIndex] / TotalPayroll[HistoricalIndex]
+  DCCurrentRatio <- DCPayroll_CurrentHires[HistoricalIndex] / TotalPayroll[HistoricalIndex]
+  CombinedCurrentRatio <- CombinedPlanPayroll_CurrentHires[HistoricalIndex] / TotalPayroll[HistoricalIndex]
+  ARPCurrentRatio <- ARPPayroll_CurrentHires[HistoricalIndex] / TotalPayroll[HistoricalIndex]
+  
+  for(i in StartIndex:length(FYE)){
+    #Payroll
+    TotalPayroll[i] <- TotalPayroll[i-1]*(1 + Payroll_growth)
+    PayrollIncrease <- TotalPayroll[i-1]*(Payroll_growth)
+    CurrentHirePct[i] <- CurrentHirePct[i-1]*0.95
+    CurrentHirePayroll[i] <- TotalPayroll[i]*CurrentHirePct[i]
+    NewHirePayroll[i] <- TotalPayroll[i]*(1 - CurrentHirePct[i])
+    #
+    #Current Hire and New Hire split
+    DBPayroll_CurrentHires[i] <- CurrentHirePayroll[i]*DBCurrentRatio
+    DCPayroll_CurrentHires[i] <- CurrentHirePayroll[i]*DCCurrentRatio
+    CombinedPlanPayroll_CurrentHires[i] <- CurrentHirePayroll[i]*CombinedCurrentRatio
+    ARPPayroll_CurrentHires[i] <- CurrentHirePayroll[i]*ARPCurrentRatio
+    
+    DBPayroll_NewHires[i] <- NewHirePayroll[i]*(1 - (Combined_choice + DC_choice))
+    DCPayroll_NewHires[i] <- NewHirePayroll[i]*DC_choice
+    CombinedPlanPayroll_NewHires[i] <- NewHirePayroll[i]*Combined_choice
+    ARPPayroll_NewHires[i] <- NewHirePayroll[i] - (DBPayroll_NewHires[i] + CombinedPlanPayroll_NewHires[i] + DCPayroll_NewHires[i])
+    #
+    #
+    #Discount Rate
+    OriginalDR_CurrentHires[i] <- dis_r_currentHires
+    NewDR_CurrentHires[i] <- DR_CurrentHires
+    OriginalDR_NewHires[i] <- dis_r_newHires
+    NewDR_NewHires[i] <- DR_NewHires
+    #
+    #Benefit Payments, Admin Expenses, Refunds, Transfer
+    BenPayments_Total[i] <- BenPayments_Total[i-1]*(1+BenGrowthMax)
+    BenPayments_NewHires[i] <- BenPayments_Total[i]*(1 - CurrentHirePct[i])
+    BenPayments_CurrentHires[i] <- BenPayments_Total[i] - BenPayments_NewHires[i]
+    AdminExp[i] <- -1*Admin_Exp_Pct*TotalPayroll[i]
+    AdminExp_CurrentHires[i] <- -1*Admin_Exp_Pct*CurrentHirePayroll[i]
+    AdminExp_NewHires[i] <- -1*Admin_Exp_Pct*NewHirePayroll[i]
+    #
+    #Accrued Liability, MOY NC - Original DR
+    MOYNCExistOrigDR[i] <- NC_DB_Pct_CurrentHire*DBPayroll_CurrentHires[i] + NC_Combined_Pct_CurrentHire*CombinedPlanPayroll_CurrentHires[i]
+    MOYNCNewHiresOrigDR[i] <- NC_DB_Pct_NewHire*DBPayroll_NewHires[i] + NC_Combined_Pct_NewHire*CombinedPlanPayroll_NewHires[i]
+    AccrLiabOrigDR_CurrentHires[i] <- AccrLiabOrigDR_CurrentHires[i-1]*(1+OriginalDR_CurrentHires[i]) + (MOYNCExistOrigDR[i] + BenPayments_CurrentHires[i])*(1+OriginalDR_CurrentHires[i])^0.5
+    AccrLiabOrigDR_NewHires[i] <- AccrLiabOrigDR_NewHires[i-1]*(1+OriginalDR_CurrentHires[i]) + (MOYNCNewHiresOrigDR[i] + BenPayments_NewHires[i])*(1+OriginalDR_NewHires[i])^0.5
+    AccrLiabOrigDR_Total[i] <- AccrLiabOrigDR_CurrentHires[i] + AccrLiabOrigDR_NewHires[i]
+    # #
+    #Accrued Liability, MOY NC - New DR
+    DRDifference_CurrentHires <- 100*(OriginalDR_CurrentHires[i] - NewDR_CurrentHires[i])
+    DRDifference_NewHires <- 100*(OriginalDR_NewHires[i] - NewDR_NewHires[i])
+    MOYNCExistNewDR[i] <- MOYNCExistOrigDR[i]*((1+(NCSensDR/100))^(DRDifference_CurrentHires))
+    MOYNCNewHiresNewDR[i] <- MOYNCNewHiresOrigDR[i]*((1+(NCSensDR/100))^(DRDifference_NewHires))
+    AccrLiabNewDR_CurrentHires[i] <- AccrLiabOrigDR_CurrentHires[i]*((1+(LiabSensDR/100))^(DRDifference_CurrentHires))*((1+(Convexity/100))^((DRDifference_CurrentHires)^2/2))
+    AccrLiabNewDR_NewHires[i] <- AccrLiabOrigDR_NewHires[i]*((1+(LiabSensDR/100))^(DRDifference_NewHires))*((1+(Convexity/100))^((DRDifference_NewHires)^2/2))
+    AccrLiabNewDR_Total[i] <- AccrLiabNewDR_CurrentHires[i] + AccrLiabNewDR_NewHires[i]
+    
+    #ProjectionCount is used because amortization and return scenarios do not start at the same time as start index
+    #Because start index includes historical data and thus might be 3 by the time ProjectionCount is 1
+    ProjectionCount <- i - StartIndex + 1
+    
+    #EE NC, Contrib and Cost Sharing and Amo Policy
+    #Hard coded #s for now
+    Total_NC_CurrentHires_Pct[i] <- 0.1176
+    Total_NC_NewHires_Pct[i] <- 0.1176
+    Total_NC_DB_CurrentHires_Pct[i] <- 0.1206
+    Total_NC_Combined_CurrentHires_Pct[i] <- 0.045
+    Total_NC_DB_NewHires_Pct[i] <- 0.1206
+    Total_NC_Combined_NewHires_Pct[i] <- 0.045
+    
+    ER_Contrib_DB_CurrentHires_Pct[i] <- ERContribDB_Stat_CurrentHire
+    ER_Contrib_Combined_CurrentHires_Pct[i] <- ERContribCombined_Stat_CurrentHire
+    ER_Contrib_DB_NewHires_Pct[i] <- ERContribDB_Stat_NewHire
+    ER_Contrib_Combined_NewHires_Pct[i] <- ERContribCombined_Stat_NewHire
+    
+    if(CostSharing_NCCurrent == 'Yes'){
+      EE_NC_DB_CurrentHires_Pct[i] <- Total_NC_DB_CurrentHires_Pct[i]/2
+      EE_NC_Combined_CurrentHires_Pct[i] <- Total_NC_Combined_CurrentHires_Pct[i]/2
+    } else {
+      EE_NC_DB_CurrentHires_Pct[i] <- EEContribDB_CurrentHire
+      EE_NC_Combined_CurrentHires_Pct[i] <- EEContribCombined_DB_Transfer_CurrentHire
+    }
+    
+    if(CostSharing_NCNew == 'Yes'){
+      EE_NC_DB_NewHires_Pct[i] <- Total_NC_DB_NewHires_Pct[i]/2
+      EE_NC_Combined_NewHires_Pct[i] <- Total_NC_Combined_NewHires_Pct[i]/2  
+    } else {
+      EE_NC_DB_NewHires_Pct[i] <- EEContribDB_NewHire
+      EE_NC_Combined_NewHires_Pct[i] <- EEContribCombined_DB_Transfer_NewHire
+    }
+    
+    ER_NC_DB_CurrentHires_Pct[i] <- Total_NC_DB_CurrentHires_Pct[i] - EE_NC_DB_CurrentHires_Pct[i]
+    ER_NC_Combined_CurrentHires_Pct[i] <- Total_NC_Combined_CurrentHires_Pct[i] - EE_NC_Combined_CurrentHires_Pct[i]
+    ER_NC_DB_NewHires_Pct[i] <- Total_NC_DB_NewHires_Pct[i] - EE_NC_DB_NewHires_Pct[i]
+    ER_NC_Combined_NewHires_Pct[i] <- Total_NC_Combined_NewHires_Pct[i] - EE_NC_Combined_NewHires_Pct[i]
+    
+    #Amo Policy
+    if(FundingPolicy == 'Statutory'){
+      AmoRate_Stat_DB_CurrentHires[i] <- ER_Contrib_DB_CurrentHires_Pct[i] - ER_NC_DB_CurrentHires_Pct[i]
+      AmoRate_Stat_Combined_CurrentHires[i] <- ER_Contrib_Combined_CurrentHires_Pct[i] - ER_NC_Combined_CurrentHires_Pct[i]
+      AmoRate_Stat_DB_NewHires[i] <- ER_Contrib_DB_NewHires_Pct[i] - ER_NC_DB_NewHires_Pct[i]
+      AmoRate_Stat_Combined_NewHires[i] <- ER_Contrib_Combined_NewHires_Pct[i] - ER_NC_Combined_NewHires_Pct[i]
+      
+      AmoRate_CurrentHires[i] <- (AmoRate_Stat_DB_CurrentHires[i]*DBPayroll_CurrentHires[i] +
+                                    AmoRate_Stat_Combined_CurrentHires[i]*CombinedPlanPayroll_CurrentHires[i] +
+                                    ERContrib_DC_DB_UAL_CurrentHire*DCPayroll_CurrentHires[i] +
+                                    ERContrib_DC_ARP_UAL_CurrentHire*ARPPayroll_CurrentHires[i]) / CurrentHirePayroll[i]
+      
+      AmoRate_NewHires[i] <- (AmoRate_Stat_DB_NewHires[i]*DBPayroll_NewHires[i] +
+                                AmoRate_Stat_Combined_NewHires[i]*CombinedPlanPayroll_NewHires[i] +
+                                ERContrib_DC_DB_UAL_NewHire*DCPayroll_NewHires[i] +
+                                ERContrib_DC_ARP_UAL_NewHire*ARPPayroll_NewHires[i]) / NewHirePayroll[i]
+      
+    } else if(FundingPolicy == 'ADEC'){
+      AmoRate_CurrentHires[i] <- sum(Amortization_CurrentHires[ProjectionCount,]) / TotalPayroll[i]
+      AmoRate_NewHires[i] <- sum(Amortization_NewHires[ProjectionCount,]) / NewHirePayroll[i]
+    }
+    
+    if(CostSharing_AmoCurrent == 'Yes'){
+      EEAmoRate_CurrentHires[i] <- AmoRate_CurrentHires[i]/2
+    } else {
+      EEAmoRate_CurrentHires[i] <- 0
+    }
+    
+    if(CostSharing_AmoNew == 'Yes'){
+      EEAmoRate_NewHires[i] <- AmoRate_NewHires[i]/2
+    } else {
+      EEAmoRate_NewHires[i] <- 0
+    }
+    
+    #
+    #EE, ER and Amo Cashflows
+    EE_NC_CurrentHires[i] <- EE_NC_DB_CurrentHires_Pct[i]*DBPayroll_CurrentHires[i] +  EE_NC_Combined_CurrentHires_Pct[i]*CombinedPlanPayroll_CurrentHires[i]
+    EE_NC_NewHires[i] <- EE_NC_DB_NewHires_Pct[i]*DBPayroll_NewHires[i] + EE_NC_Combined_NewHires_Pct[i]*CombinedPlanPayroll_NewHires[i]
+    ER_NC_CurrentHires[i] <- ER_NC_DB_CurrentHires_Pct[i]*DBPayroll_CurrentHires[i] +  ER_NC_Combined_CurrentHires_Pct[i]*CombinedPlanPayroll_CurrentHires[i]
+    ER_NC_NewHires[i] <- ER_NC_DB_NewHires_Pct[i]*DBPayroll_NewHires[i] + ER_NC_Combined_NewHires_Pct[i]*CombinedPlanPayroll_NewHires[i]
+    
+    EE_Amo_CurrentHires[i] <- EEAmoRate_CurrentHires[i]*(DBPayroll_CurrentHires[i] + CombinedPlanPayroll_CurrentHires[i])
+    EE_Amo_NewHires[i] <- EEAmoRate_NewHires[i]*(DBPayroll_NewHires[i] + CombinedPlanPayroll_NewHires[i])
+    ER_Amo_CurrentHires[i] <- max(AmoRate_CurrentHires[i]*TotalPayroll[i] - EE_Amo_CurrentHires[i], -ER_NC_CurrentHires[i])
+    ER_Amo_NewHires[i] <- max(AmoRate_NewHires[i]*NewHirePayroll[i] - EE_Amo_NewHires[i], -ER_NC_NewHires[i])
+    #
+    #Return based on Deterministic or Stochastic
+    if(ReturnType == 'Stochastic'){
+      ROA_MVA[i] <- rnorm(1,Sim_Return,Sim_Volatility)
+    } else if(ReturnType == 'Deterministic'){
+      ROA_MVA[i] <- as.double(Scenario_Data[i,ScenarioIndex]) 
+    }
+    #
+    #Cash Flows and Solvency Contribution
+    #Add EE Amo evenutally (Cost sharing)
+    #Add supplementary Contribution
+    Cashflows_Current[i] <- BenPayments_CurrentHires[i] + AdminExp_CurrentHires[i] + EE_NC_CurrentHires[i] + ER_NC_CurrentHires[i] + EE_Amo_CurrentHires[i] + ER_Amo_CurrentHires[i]
+    Cashflows_New[i] <- BenPayments_NewHires[i] + AdminExp_NewHires[i] + EE_NC_NewHires[i] + ER_NC_NewHires[i] + EE_Amo_NewHires[i] + ER_Amo_NewHires[i]
+    Cashflows_Total[i] <- Cashflows_Current[i] + Cashflows_New[i]
+    
+    Solv_Contrib_Total[i] <- as.double(max(-(MVA[i-1]*(1+ROA_MVA[i]) + Cashflows_Total[i]*(1+ROA_MVA[i])^0.5) / (1+ROA_MVA[i])^0.5,0))
+    Solv_Contrib_CurrentHires[i] <- Solv_Contrib_Total[i]*(AccrLiabNewDR_CurrentHires[i] / AccrLiabOrigDR_Total[i])
+    Solv_Contrib_NewHires[i] <- Solv_Contrib_Total[i]*(AccrLiabNewDR_NewHires[i]/AccrLiabOrigDR_Total[i])
+    
+    #Total Contrib
+    Total_ER[i] <- ER_NC_CurrentHires[i] + ER_NC_NewHires[i] + ER_Amo_CurrentHires[i] + ER_Amo_NewHires[i] + Solv_Contrib_Total[i]
+    ER_Percentage[i] <- Total_ER[i] /  TotalPayroll[i]
+    #
+    #Net CF, Expected MVA, Solvency Contribution
+    NetCF_CurrentHires[i] <- Cashflows_Current[i] + Solv_Contrib_NewHires[i]
+    ExpInvInc_CurrentHires[i] <- (MVA_CurrentHires[i-1]*NewDR_CurrentHires[i-1]) + (NetCF_CurrentHires[i]*NewDR_CurrentHires[i-1]*0.5)
+    MVA_CurrentHires[i] <- MVA_CurrentHires[i-1]*(1+ROA_MVA[i]) + NetCF_CurrentHires[i]*(1+ROA_MVA[i])^0.5
+    ActualReturnMVA_CurrentHires[i] <- MVA_CurrentHires[i] - MVA_CurrentHires[i-1] - NetCF_CurrentHires[i]
+    
+    NetCF_NewHires[i] <- Cashflows_New[i] + Solv_Contrib_CurrentHires[i]
+    ExpInvInc_NewHires[i] <- (MVA_NewHires[i-1]*NewDR_NewHires[i-1]) + (NetCF_NewHires[i]*NewDR_NewHires[i-1]*0.5)
+    MVA_NewHires[i] <- MVA_NewHires[i-1]*(1+ROA_MVA[i]) + NetCF_NewHires[i]*(1+ROA_MVA[i])^0.5
+    ActualReturnMVA_NewHires[i] <- MVA_NewHires[i] - MVA_NewHires[i-1] - NetCF_NewHires[i]
+    #
+    #Gain Loss, Defered Losses
+    GainLoss_CurrentHires[i] <- ActualReturnMVA_CurrentHires[i] - ExpInvInc_CurrentHires[i] 
+    DeferedCurYear_CurrentHires[i] <- GainLoss_CurrentHires[i]*(0.75/1)
+    Year1DeferedLosses_CurrentHires[i] <- DeferedCurYear_CurrentHires[i-1]*(0.5/0.75)
+    Year2DeferedLosses_CurrentHires[i] <- Year1DeferedLosses_CurrentHires[i-1]*(0.25/0.5)
+    Year3DeferedLosses_CurrentHires[i] <- Year2DeferedLosses_CurrentHires[i-1]*(0/0.25)
+    TotalDeferedLosses_CurrentHires[i] <- Year1DeferedLosses_CurrentHires[i] + Year2DeferedLosses_CurrentHires[i] + Year3DeferedLosses_CurrentHires[i] + DeferedCurYear_CurrentHires[i]
+    
+    GainLoss_NewHires[i] <- ActualReturnMVA_NewHires[i] - ExpInvInc_NewHires[i] 
+    DeferedCurYear_NewHires[i] <- GainLoss_NewHires[i]*(0.75/1)
+    Year1DeferedLosses_NewHires[i] <- DeferedCurYear_NewHires[i-1]*(0.5/0.75)
+    Year2DeferedLosses_NewHires[i] <- Year1DeferedLosses_NewHires[i-1]*(0.25/0.5)
+    Year3DeferedLosses_NewHires[i] <- Year2DeferedLosses_NewHires[i-1]*(0/0.25)
+    TotalDeferedLosses_NewHires[i] <- Year1DeferedLosses_NewHires[i] + Year2DeferedLosses_NewHires[i] + Year3DeferedLosses_NewHires[i] + DeferedCurYear_NewHires[i]
+    #
+    #AVA, MVA, UAL, FR
+    AVA_CurrentHires[i] <- MVA_CurrentHires[i] - TotalDeferedLosses_CurrentHires[i]
+    AVA_CurrentHires[i] <- max(AVA_CurrentHires[i],AVA_lowerbound*MVA_CurrentHires[i])
+    AVA_CurrentHires[i] <- min(AVA_CurrentHires[i],AVA_upperbound*MVA_CurrentHires[i])
+    UAL_AVA_CurrentHires[i] <- AccrLiabNewDR_CurrentHires[i] - AVA_CurrentHires[i]
+    UAL_MVA_CurrentHires[i] <- AccrLiabNewDR_CurrentHires[i] - MVA_CurrentHires[i]
+    
+    AVA_NewHires[i] <- MVA_NewHires[i] - TotalDeferedLosses_NewHires[i]
+    AVA_NewHires[i] <- max(AVA_NewHires[i],AVA_lowerbound*MVA_NewHires[i])
+    AVA_NewHires[i] <- min(AVA_NewHires[i],AVA_upperbound*MVA_NewHires[i])
+    UAL_AVA_NewHires[i] <- AccrLiabNewDR_NewHires[i] - AVA_NewHires[i]
+    UAL_MVA_NewHires[i] <- AccrLiabNewDR_NewHires[i] - MVA_NewHires[i]
+    
+    UAL_AVA[i] <- UAL_AVA_CurrentHires[i] + UAL_AVA_NewHires[i]
+    UAL_MVA[i] <- UAL_MVA_CurrentHires[i] + UAL_MVA_NewHires[i]
+    AVA[i] <- AVA_CurrentHires[i] + AVA_NewHires[i]
+    MVA[i] <- MVA_CurrentHires[i] + MVA_NewHires[i]
+    FR_AVA[i] <- AVA[i] / AccrLiabNewDR_Total[i]
+    FR_MVA[i] <- MVA[i] / AccrLiabNewDR_Total[i]
+    #
+    ##Amortization
+    #Current Hires
+    if(ProjectionCount < nrow(Amortization_CurrentHires)){
+      OutstandingBase_CurrentHires[ProjectionCount+1,2:ncol(OutstandingBase_CurrentHires)] <- OutstandingBase_CurrentHires[ProjectionCount,1:(ncol(OutstandingBase_CurrentHires)-1)]*(1 + NewDR_CurrentHires[i]) - (Amortization_CurrentHires[ProjectionCount,1:ncol(Amortization_CurrentHires)]*(1 + NewDR_CurrentHires[i])^0.5)
+      OutstandingBase_CurrentHires[ProjectionCount+1,1] <- UAL_AVA_CurrentHires[i] - sum(OutstandingBase_CurrentHires[ProjectionCount+1,2:ncol(OutstandingBase_CurrentHires)])
+      
+      #Amo Layers
+      Amortization_CurrentHires[ProjectionCount+1,1:ncol(Amortization_CurrentHires)] <- PMT(pv = OutstandingBase_CurrentHires[ProjectionCount+1,1:(ncol(OutstandingBase_CurrentHires)-1)], 
+                                                                                            r = NewDR_CurrentHires[i], 
+                                                                                            g = AmoBaseInc_CurrentHire, 
+                                                                                            t = 0.5,
+                                                                                            nper = pmax(OffsetYears_CurrentHires[ProjectionCount+1,1:ncol(OffsetYears_CurrentHires)],1))
+    }
+    
+    #New Hires
+    if(ProjectionCount < nrow(Amortization_NewHires)){
+      OutstandingBase_NewHires[ProjectionCount+1,2:ncol(OutstandingBase_NewHires)] <- OutstandingBase_NewHires[ProjectionCount,1:(ncol(OutstandingBase_NewHires)-1)]*(1 + NewDR_NewHires[i]) - (Amortization_NewHires[ProjectionCount,1:ncol(Amortization_NewHires)]*(1 + NewDR_NewHires[i])^0.5)
+      OutstandingBase_NewHires[ProjectionCount+1,1] <- UAL_AVA_NewHires[i] - sum(OutstandingBase_NewHires[ProjectionCount+1,2:ncol(OutstandingBase_NewHires)])
+      
+      #Amo Layers
+      Amortization_NewHires[ProjectionCount+1,1:ncol(Amortization_NewHires)] <- PMT(pv = OutstandingBase_NewHires[ProjectionCount+1,1:(ncol(OutstandingBase_NewHires)-1)], 
+                                                                                    r = NewDR_NewHires[i], 
+                                                                                    g = AmoBaseInc_NewHire, 
+                                                                                    t = 0.5,
+                                                                                    nper = pmax(OffsetYears_NewHires[ProjectionCount+1,1:ncol(OffsetYears_NewHires)],1))
+    }
+  }
+  
+  Output <- FYE
+  for(i in 2:length(Historical_Data)){
+    Output <- cbind(Output, get(colnames(Historical_Data)[i]))
+  }
+
+  return(as.data.frame(Output))
 }
-
-for(i in StartIndex:length(FYE)){
-  #ProjectionCount is used because amortization and return scenarios do not start at the same time as start index
-  #Because start index includes historical data and thus might be 3 by the time ProjectionCount is 1
-  ProjectionCount <- i - StartIndex + 1
-
-  #EE NC, Contrib and Cost Sharing and Amo Policy
-  #Hard coded #s for now
-  Total_NC_CurrentHires_Pct[i] <- 0.1176
-  Total_NC_NewHires_Pct[i] <- 0.1176
-  Total_NC_DB_CurrentHires_Pct[i] <- 0.1206
-  Total_NC_Combined_CurrentHires_Pct[i] <- 0.045
-  Total_NC_DB_NewHires_Pct[i] <- 0.1206
-  Total_NC_Combined_NewHires_Pct[i] <- 0.045
-  
-  ER_Contrib_DB_CurrentHires_Pct[i] <- ERContribDB_Stat_CurrentHire
-  ER_Contrib_Combined_CurrentHires_Pct[i] <- ERContribCombined_Stat_CurrentHire
-  ER_Contrib_DB_NewHires_Pct[i] <- ERContribDB_Stat_NewHire
-  ER_Contrib_Combined_NewHires_Pct[i] <- ERContribCombined_Stat_NewHire
-  
-  EE_NC_DB_CurrentHires_Pct[i] <- EEContribDB_CurrentHire
-  EE_NC_Combined_CurrentHires_Pct[i] <- EEContribCombined_DB_Transfer_CurrentHire
-  EE_NC_DB_NewHires_Pct[i] <- EEContribDB_NewHire
-  EE_NC_Combined_NewHires_Pct[i] <- EEContribCombined_DB_Transfer_NewHire
-  
-  ER_NC_DB_CurrentHires_Pct[i] <- Total_NC_DB_CurrentHires_Pct[i] - EE_NC_DB_CurrentHires_Pct[i]
-  ER_NC_Combined_CurrentHires_Pct[i] <- Total_NC_Combined_CurrentHires_Pct[i] - EE_NC_Combined_CurrentHires_Pct[i]
-  ER_NC_DB_NewHires_Pct[i] <- Total_NC_DB_NewHires_Pct[i] - EE_NC_DB_NewHires_Pct[i]
-  ER_NC_Combined_NewHires_Pct[i] <- Total_NC_Combined_NewHires_Pct[i] - EE_NC_Combined_NewHires_Pct[i]
-  
-  if(ER_Policy == 'Statutory Rate'){
-    AmoRate_Stat_DB_CurrentHires[i] <- ER_Contrib_DB_CurrentHires_Pct[i] - ER_NC_DB_CurrentHires_Pct[i]
-    AmoRate_Stat_Combined_CurrentHires[i] <- ER_Contrib_Combined_CurrentHires_Pct[i] - ER_NC_Combined_CurrentHires_Pct[i]
-    AmoRate_Stat_DB_NewHires[i] <- ER_Contrib_DB_NewHires_Pct[i] - ER_NC_DB_NewHires_Pct[i]
-    AmoRate_Stat_Combined_NewHires[i] <- ER_Contrib_Combined_NewHires_Pct[i] - ER_NC_Combined_NewHires_Pct[i]
-    
-    AmoRate_CurrentHires[i] <- (AmoRate_Stat_DB_CurrentHires[i]*DBPayroll_CurrentHires[i] + 
-                                  AmoRate_Stat_Combined_CurrentHires[i]*CombinedPlanPayroll_CurrentHires[i] + 
-                                  ERContrib_DC_DB_UAL_CurrentHire*DCPayroll_CurrentHires[i] + 
-                                  ERContrib_DC_ARP_UAL_CurrentHire*ARPPayroll_CurrentHires[i]) / CurrentHirePayroll[i]
-    
-    AmoRate_NewHires[i] <- (AmoRate_Stat_DB_NewHires[i]*DBPayroll_NewHires[i] + 
-                              AmoRate_Stat_Combined_NewHires[i]*CombinedPlanPayroll_NewHires[i] + 
-                              ERContrib_DC_DB_UAL_NewHire*DCPayroll_NewHires[i] + 
-                              ERContrib_DC_ARP_UAL_NewHire*ARPPayroll_NewHires[i]) / NewHirePayroll[i]
-  } else if(ER_Policy == 'ADC'){
-    AmoRate_CurrentHires[i] <- sum(Amortization_CurrentHires[ProjectionCount,]) / TotalPayroll[i]
-    AmoRate_NewHires[i] <- sum(Amortization_NewHires[ProjectionCount,]) / NewHirePayroll[i]
-  }
-  #
-  #EE, ER and Amo Cashflows
-  EE_NC_CurrentHires[i] <- EE_NC_DB_CurrentHires_Pct[i]*DBPayroll_CurrentHires[i] +  EE_NC_Combined_CurrentHires_Pct[i]*CombinedPlanPayroll_CurrentHires[i]
-  EE_NC_NewHires[i] <- EE_NC_DB_NewHires_Pct[i]*DBPayroll_NewHires[i] + EE_NC_Combined_NewHires_Pct[i]*CombinedPlanPayroll_NewHires[i]
-  ER_NC_CurrentHires[i] <- ER_NC_DB_CurrentHires_Pct[i]*DBPayroll_CurrentHires[i] +  ER_NC_Combined_CurrentHires_Pct[i]*CombinedPlanPayroll_CurrentHires[i]
-  ER_NC_NewHires[i] <- ER_NC_DB_NewHires_Pct[i]*DBPayroll_NewHires[i] + ER_NC_Combined_NewHires_Pct[i]*CombinedPlanPayroll_NewHires[i]
-  ER_Amo_CurrentHires[i] <- max(AmoRate_CurrentHires[i]*TotalPayroll[i], -ER_NC_CurrentHires[i])
-  ER_Amo_NewHires[i] <- max(AmoRate_NewHires[i]*NewHirePayroll[i], -ER_NC_NewHires[i])
-  #
-  #Return based on Deterministic or Stochastic
-  if(AnalysisType == 'Stochastic'){
-    ROA_MVA[i] <- rnorm(1,Sim_Return,Sim_Volatility)
-  } else if(AnalysisType == 'Deterministic'){
-    ROA_MVA[i] <- as.double(Scenario_Data[i,ScenarioIndex]) 
-  }
-  #
-  #Cash Flows and Solvency Contribution
-  #Add EE Amo evenutally (Cost sharing)
-  #Add supplementary Contribution
-  Cashflows_Current <- BenPayments_CurrentHires[i] + AdminExp_CurrentHires[i] + EE_NC_CurrentHires[i] + ER_NC_CurrentHires[i] + ER_Amo_CurrentHires[i]
-  Cashflows_New <- BenPayments_NewHires[i] + AdminExp_NewHires[i] + EE_NC_NewHires[i] + ER_NC_NewHires[i] + ER_Amo_NewHires[i]
-  Cashflows_Total <- Cashflows_Current + Cashflows_New
-  
-  Solv_Contrib_Total[i] <- as.double(max(-(MVA[i-1]*(1+ROA_MVA[i]) + Cashflows_Total*(1+ROA_MVA[i])^0.5) / (1+ROA_MVA[i])^0.5,0))
-  Solv_Contrib_CurrentHires[i] <- Solv_Contrib_Total[i]*(AccrLiabNewDR_CurrentHires[i] / AccrLiabOrigDR_Total[i])
-  Solv_Contrib_NewHires[i] <- Solv_Contrib_Total[i]*(AccrLiabNewDR_NewHires[i]/AccrLiabOrigDR_Total[i])
-  
-  #Total Contrib
-  Total_ER[i] <- ER_NC_CurrentHires[i] + ER_NC_NewHires[i] + ER_Amo_CurrentHires[i] + ER_Amo_NewHires[i] + Solv_Contrib_Total[i]
-  ER_Percentage[i] <- Total_ER[i] /  TotalPayroll[i]
-  #
-  #Net CF, Expected MVA, Solvency Contribution
-  NetCF_CurrentHires[i] <- Cashflows_Current + Solv_Contrib_NewHires[i]
-  ExpInvInc_CurrentHires[i] <- (MVA_CurrentHires[i-1]*NewDR_CurrentHires[i-1]) + (NetCF_CurrentHires[i]*NewDR_CurrentHires[i-1]*0.5)
-  MVA_CurrentHires[i] <- MVA_CurrentHires[i-1]*(1+ROA_MVA[i]) + NetCF_CurrentHires[i]*(1+ROA_MVA[i])^0.5
-  ActualReturnMVA_CurrentHires[i] <- MVA_CurrentHires[i] - MVA_CurrentHires[i-1] - NetCF_CurrentHires[i]
-  
-  NetCF_NewHires[i] <- Cashflows_New + Solv_Contrib_CurrentHires[i]
-  ExpInvInc_NewHires[i] <- (MVA_NewHires[i-1]*NewDR_NewHires[i-1]) + (NetCF_NewHires[i]*NewDR_NewHires[i-1]*0.5)
-  MVA_NewHires[i] <- MVA_NewHires[i-1]*(1+ROA_MVA[i]) + NetCF_NewHires[i]*(1+ROA_MVA[i])^0.5
-  ActualReturnMVA_NewHires[i] <- MVA_NewHires[i] - MVA_NewHires[i-1] - NetCF_NewHires[i]
-  #
-  #Gain Loss, Defered Losses
-  GainLoss_CurrentHires[i] <- ActualReturnMVA_CurrentHires[i] - ExpInvInc_CurrentHires[i] 
-  DeferedCurYear_CurrentHires[i] <- GainLoss_CurrentHires[i]*(0.75/1)
-  Year1DeferedLosses_CurrentHires[i] <- DeferedCurYear_CurrentHires[i-1]*(0.5/0.75)
-  Year2DeferedLosses_CurrentHires[i] <- Year1DeferedLosses_CurrentHires[i-1]*(0.25/0.5)
-  Year3DeferedLosses_CurrentHires[i] <- Year2DeferedLosses_CurrentHires[i-1]*(0/0.25)
-  TotalDeferedLosses_CurrentHires[i] <- Year1DeferedLosses_CurrentHires[i] + Year2DeferedLosses_CurrentHires[i] + Year3DeferedLosses_CurrentHires[i] + DeferedCurYear_CurrentHires[i]
-  
-  GainLoss_NewHires[i] <- ActualReturnMVA_NewHires[i] - ExpInvInc_NewHires[i] 
-  DeferedCurYear_NewHires[i] <- GainLoss_NewHires[i]*(0.75/1)
-  Year1DeferedLosses_NewHires[i] <- DeferedCurYear_NewHires[i-1]*(0.5/0.75)
-  Year2DeferedLosses_NewHires[i] <- Year1DeferedLosses_NewHires[i-1]*(0.25/0.5)
-  Year3DeferedLosses_NewHires[i] <- Year2DeferedLosses_NewHires[i-1]*(0/0.25)
-  TotalDeferedLosses_NewHires[i] <- Year1DeferedLosses_NewHires[i] + Year2DeferedLosses_NewHires[i] + Year3DeferedLosses_NewHires[i] + DeferedCurYear_NewHires[i]
-  #
-  #AVA, MVA, UAL, FR
-  AVA_CurrentHires[i] <- MVA_CurrentHires[i] - TotalDeferedLosses_CurrentHires[i]
-  AVA_CurrentHires[i] <- max(AVA_CurrentHires[i],AVA_lowerbound*MVA_CurrentHires[i])
-  AVA_CurrentHires[i] <- min(AVA_CurrentHires[i],AVA_upperbound*MVA_CurrentHires[i])
-  UAL_AVA_CurrentHires[i] <- AccrLiabNewDR_CurrentHires[i] - AVA_CurrentHires[i]
-  UAL_MVA_CurrentHires[i] <- AccrLiabNewDR_CurrentHires[i] - MVA_CurrentHires[i]
-  
-  AVA_NewHires[i] <- MVA_NewHires[i] - TotalDeferedLosses_NewHires[i]
-  AVA_NewHires[i] <- max(AVA_NewHires[i],AVA_lowerbound*MVA_NewHires[i])
-  AVA_NewHires[i] <- min(AVA_NewHires[i],AVA_upperbound*MVA_NewHires[i])
-  UAL_AVA_NewHires[i] <- AccrLiabNewDR_NewHires[i] - AVA_NewHires[i]
-  UAL_MVA_NewHires[i] <- AccrLiabNewDR_NewHires[i] - MVA_NewHires[i]
-  
-  UAL_AVA[i] <- UAL_AVA_CurrentHires[i] + UAL_AVA_NewHires[i]
-  UAL_MVA[i] <- UAL_MVA_CurrentHires[i] + UAL_MVA_NewHires[i]
-  AVA[i] <- AVA_CurrentHires[i] + AVA_NewHires[i]
-  MVA[i] <- MVA_CurrentHires[i] + MVA_NewHires[i]
-  FR_AVA[i] <- AVA[i] / AccrLiabNewDR_Total[i]
-  FR_MVA[i] <- MVA[i] / AccrLiabNewDR_Total[i]
-  #
-  ##Amortization
-  #Current Hires
-  if(ProjectionCount < nrow(Amortization_CurrentHires)){
-    OutstandingBase_CurrentHires[ProjectionCount+1,2:ncol(OutstandingBase_CurrentHires)] <- OutstandingBase_CurrentHires[ProjectionCount,1:(ncol(OutstandingBase_CurrentHires)-1)]*(1 + NewDR_CurrentHires[i]) - (Amortization_CurrentHires[ProjectionCount,1:ncol(Amortization_CurrentHires)]*(1 + NewDR_CurrentHires[i])^0.5)
-    OutstandingBase_CurrentHires[ProjectionCount+1,1] <- UAL_AVA_CurrentHires[i] - sum(OutstandingBase_CurrentHires[ProjectionCount+1,2:ncol(OutstandingBase_CurrentHires)])
-    
-    #Amo Layers
-    Amortization_CurrentHires[ProjectionCount+1,1:ncol(Amortization_CurrentHires)] <- PMT(pv = OutstandingBase_CurrentHires[ProjectionCount+1,1:(ncol(OutstandingBase_CurrentHires)-1)], 
-                                                                                          r = NewDR_CurrentHires[i], 
-                                                                                          g = AmoBaseInc_CurrentHire, 
-                                                                                          t = 0.5,
-                                                                                          nper = pmax(OffsetYears_CurrentHires[ProjectionCount+1,1:ncol(OffsetYears_CurrentHires)],1))
-  }
-  
-  #New Hires
-  if(ProjectionCount < nrow(Amortization_NewHires)){
-    OutstandingBase_NewHires[ProjectionCount+1,2:ncol(OutstandingBase_NewHires)] <- OutstandingBase_NewHires[ProjectionCount,1:(ncol(OutstandingBase_NewHires)-1)]*(1 + NewDR_NewHires[i]) - (Amortization_NewHires[ProjectionCount,1:ncol(Amortization_NewHires)]*(1 + NewDR_NewHires[i])^0.5)
-    OutstandingBase_NewHires[ProjectionCount+1,1] <- UAL_AVA_NewHires[i] - sum(OutstandingBase_NewHires[ProjectionCount+1,2:ncol(OutstandingBase_NewHires)])
-    
-    #Amo Layers
-    Amortization_NewHires[ProjectionCount+1,1:ncol(Amortization_NewHires)] <- PMT(pv = OutstandingBase_NewHires[ProjectionCount+1,1:(ncol(OutstandingBase_NewHires)-1)], 
-                                                                                  r = NewDR_NewHires[i], 
-                                                                                  g = AmoBaseInc_NewHire, 
-                                                                                  t = 0.5,
-                                                                                  nper = pmax(OffsetYears_NewHires[ProjectionCount+1,1:ncol(OffsetYears_NewHires)],1))
-  }
-}
-
-# Output <- double()
-# for(i in 1:length(Historical_Data)){
-#   Output <- cbind(Output, get(colnames(Historical_Data)[i]))
-# }
-
-Output <- sapply(colnames(Historical_Data), get, envir = sys.frame(sys.parent(0)))
-
 
 
 ##################################################################################################################################################################
