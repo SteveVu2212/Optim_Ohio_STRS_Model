@@ -326,10 +326,6 @@ RunModel <- function(DR_CurrentHires = dis_r_proj_currentHires,
     Solv_Contrib_Total[i] <- as.double(max(-(MVA[i-1]*(1+ROA_MVA[i]) + Cashflows_Total[i]*(1+ROA_MVA[i])^0.5) / (1+ROA_MVA[i])^0.5,0))
     Solv_Contrib_CurrentHires[i] <- Solv_Contrib_Total[i]*(AccrLiabNewDR_CurrentHires[i] / AccrLiabOrigDR_Total[i])
     Solv_Contrib_NewHires[i] <- Solv_Contrib_Total[i]*(AccrLiabNewDR_NewHires[i]/AccrLiabOrigDR_Total[i])
-    
-    #Total Contrib
-    Total_ER[i] <- ER_NC_CurrentHires[i] + ER_NC_NewHires[i] + ER_Amo_CurrentHires[i] + ER_Amo_NewHires[i] + Solv_Contrib_Total[i]
-    ER_Percentage[i] <- Total_ER[i] /  TotalPayroll[i]
     #
     #Net CF, Expected MVA, Solvency Contribution
     NetCF_CurrentHires[i] <- Cashflows_Current[i] + Solv_Contrib_NewHires[i]
@@ -370,12 +366,21 @@ RunModel <- function(DR_CurrentHires = dis_r_proj_currentHires,
     UAL_AVA_NewHires[i] <- AccrLiabNewDR_NewHires[i] - AVA_NewHires[i]
     UAL_MVA_NewHires[i] <- AccrLiabNewDR_NewHires[i] - MVA_NewHires[i]
     
-    UAL_AVA[i] <- UAL_AVA_CurrentHires[i] + UAL_AVA_NewHires[i]
-    UAL_MVA[i] <- UAL_MVA_CurrentHires[i] + UAL_MVA_NewHires[i]
     AVA[i] <- AVA_CurrentHires[i] + AVA_NewHires[i]
     MVA[i] <- MVA_CurrentHires[i] + MVA_NewHires[i]
     FR_AVA[i] <- AVA[i] / AccrLiabNewDR_Total[i]
     FR_MVA[i] <- MVA[i] / AccrLiabNewDR_Total[i]
+    UAL_AVA[i] <- UAL_AVA_CurrentHires[i] + UAL_AVA_NewHires[i]
+    UAL_MVA[i] <- UAL_MVA_CurrentHires[i] + UAL_MVA_NewHires[i]
+    UAL_AVA_InflAdj[i] <- UAL_AVA[i] / ((1 + asum_infl)^(FYE[i] - 2021))
+    UAL_MVA_InflAdj[i] <- UAL_MVA[i] / ((1 + asum_infl)^(FYE[i] - 2021))
+    #
+    #Total Contrib
+    Total_ERContrib[i] <- ER_NC_CurrentHires[i] + ER_NC_NewHires[i] + ER_Amo_CurrentHires[i] + ER_Amo_NewHires[i] + Solv_Contrib_Total[i]
+    ER_Percentage[i] <- Total_ERContrib[i] /  TotalPayroll[i]
+    Total_ER[i] <- Total_ER[i-1] + ER_InflAdj[i]
+    ER_InflAdj <- Total_ERContrib[i] / ((1 + asum_infl)^(FYE[i] - 2021))
+    AllInCost <- Total_ER[i] + UAL_MVA_InflAdj[i]
     #
     ##Amortization
     #Current Hires
