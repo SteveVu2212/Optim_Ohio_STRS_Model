@@ -1,7 +1,8 @@
 year,name_label,loss,gain,net,base
-2003,Investment Performance,24.389847,NA,NA,0
-2003,Legislative Changes & Changes to Actuarial Methods & Assumptions,18.119201,NA,NA,24.389847
-2003,Negative Amortization,11.735191,NA,NA,42.509048
-2003,Other,NA,2.115832,NA,52.128407
-2003,Deviations from Demographic Pay Increase Assumptions,NA,4.092473,NA,48.035934
-2003,Net Change to Unfunded Liability,NA,NA,48.035934,0
+2001,Negative Amortization, 14.48 , NA , NA , -   
+2001,Changes to Actuarial Methods & Assumptions, 11.92 , NA , NA , 14.48 
+2001,Investment Performance, 8.83 , NA , NA , 26.40 
+2001,Deviations from Demographic Assumptions, 5.85 , NA , NA , 35.22 
+2001,Other, 0.45 , NA , NA , 41.08 
+2001,Benefit Changes, NA , 25.72 , NA , 15.80 
+2001,Net Change to Unfunded Liability, NA , NA , 15.80 , -   
