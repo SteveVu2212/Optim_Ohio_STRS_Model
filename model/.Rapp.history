@@ -1,0 +1,4 @@
+source("/Users/truongbui/Dropbox/Work/Reason/Reason Work/Ohio/ohio_pension/model/Ohio STRS master.R")
+baseline_funding <- get_funding_data()
+baseline_funding
+test <- get_funding_data()
