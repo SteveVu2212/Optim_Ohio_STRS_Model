@@ -141,4 +141,4 @@ analysis_output <- rbind(stat_baseline_noCOLA_30,
                          adc_stress_COLA_15)
 
 
-write.xlsx(output_list, "analysis_output.xlsx", overwrite = T)
+write.xlsx(analysis_output, "analysis_output.xlsx", overwrite = T)
