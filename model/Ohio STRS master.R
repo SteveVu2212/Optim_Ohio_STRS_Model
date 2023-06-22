@@ -11,7 +11,7 @@ library(openxlsx)
 library(Rcpp)
 
 #Get actuarial and financial functions
-#sourceCpp("Rcpp_functions.cpp")
+sourceCpp("Rcpp_functions.cpp")
 source("utility_functions.R")
 
 
