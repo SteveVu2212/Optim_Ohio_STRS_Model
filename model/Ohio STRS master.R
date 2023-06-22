@@ -8,9 +8,10 @@ library(zoo)
 library(profvis)
 library(data.table)
 library(openxlsx)
-
+library(Rcpp)
 
 #Get actuarial and financial functions
+#sourceCpp("Rcpp_functions.cpp")
 source("utility_functions.R")
 
 
@@ -35,9 +36,7 @@ source("Ohio STRS liability model.R")
 #Get funding model
 source("Ohio STRS funding model.R")
 
-
-
-
+system.time(get_funding_data())
 ##############################################TESTING############################################
 
 
