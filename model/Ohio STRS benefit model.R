@@ -681,7 +681,7 @@ get_benefit_data <- function(
   
 }
 #Calculate the aggregate normal cost
-#NC_aggregate  
+NC_aggregate  
 ################################
 
 
