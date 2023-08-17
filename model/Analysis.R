@@ -7,13 +7,16 @@ source("Ohio STRS master.R")
 #Target columns
 target_col <- c("fy", "ROA", "AAL", "MVA", "AVA", "FR_MVA", "UAL_MVA_real", "er_cont_rate", "er_cont_real", "all_in_cost_real")
 
-
+s_time <- Sys.time()
 #statutory funding (30 current), baseline return, no COLA
 stat_baseline_noCOLA_30 <- get_funding_data() %>% select(any_of(target_col)) %>% 
   mutate(funding_policy = "statutory",
          current_debt_amo_period = 30,
          return_scen = "baseline",
          cola = "no")
+
+e_time <- Sys.time()
+
 
 #statutory funding (30 current), recur recession, no COLA
 stat_stress_noCOLA_30 <- get_funding_data(return_scen = "recur_recession") %>% select(any_of(target_col)) %>% 

@@ -634,12 +634,12 @@ get_benefit_data <- function(
       
       
       #Calculate present value of future benefits (PVFB) 
-      PVFB_DB = PVFB(sep_rate_vec = SepRate_DB, interest_vec = DR, value_vec = DBWealth),
+      PVFB_DB = opt_PVFB_rcpp(SepRate_DB, DR, DBWealth),
       # PVFB_CB = PVFB(sep_rate_vec = SepRate_DB, interest = ARR, value_vec = CBWealth),
       PVFB_Hybrid = PVFB(sep_rate_vec = SepRate_DB, interest_vec = DR, value_vec = HybridWealth),
       
       #Calculate present value of future salaries (PVFS)
-      PVFS = PVFS(remaining_prob_vec = RemainingProb_DB, interest_vec = DR, sal_vec = Salary),
+      PVFS = opt_PVFS_rcpp(RemainingProb_DB, DR, Salary),
       normal_cost_DB = PVFB_DB[YOS == 0] / PVFS[YOS == 0],
       # normal_cost_CB = PVFB_CB[YOS == 0] / PVFS[YOS == 0],
       normal_cost_Hybrid = PVFB_Hybrid[YOS == 0] / PVFS[YOS == 0],
@@ -681,7 +681,7 @@ get_benefit_data <- function(
   
 }
 #Calculate the aggregate normal cost
-NC_aggregate  
+# NC_aggregate  
 ################################
 
 
