@@ -36,12 +36,12 @@ source("Ohio STRS liability model.R")
 #Get funding model
 source("Ohio STRS funding model.R")
 
-system.time(get_funding_data())
+# system.time(get_funding_data())
 ##############################################TESTING############################################
 
 
 # baseline_funding <- get_funding_data()
-# reduceDR <- get_funding_data(dr_current = 0.06, dr_new = 0.06)
+reduceDR <- get_funding_data(dr_current = 0.06, dr_new = 0.06)
 # 
 # baseline_liab <- get_liability_data()
 # reduceDR_liab <- get_liability_data(dr_current = 0.06, dr_new = 0.06)

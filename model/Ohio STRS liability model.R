@@ -291,4 +291,9 @@ get_liability_data <- function(
   
 }
 
+l_start <- Sys.time()
+l <- get_liability_data()
+l_end <- Sys.time()
+print(l_end - l_start)
+
 # write.csv(funding_df, "funding_df_OhioSTRS.csv")

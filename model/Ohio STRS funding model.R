@@ -368,3 +368,8 @@ get_funding_data <- function(dr_current = dr_current_,
 #   return(output)
 #   
 # }
+
+f_start <- Sys.time()
+f <- get_funding_data()
+f_end <- Sys.time()
+print(f_end - f_start)
